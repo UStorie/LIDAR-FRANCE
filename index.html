@@ -35,6 +35,21 @@
 .leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-left:-20px;overflow:hidden}
 .leaflet-popup-tip{width:17px;height:17px;transform:rotate(45deg);margin:-10px auto 0}
 .leaflet-popup-close-button{position:absolute;right:8px;top:4px;z-index:1}
+
+/* Commandes cartographiques */
+.zoom-panel{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:1001;display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 9px;border-radius:24px;background:rgba(35,49,68,.9);box-shadow:0 5px 20px #0005;backdrop-filter:blur(12px)}
+.zoom-panel button{border:0;background:#40566b;color:white;width:29px;height:29px;border-radius:50%;cursor:pointer;font-size:18px}
+.zoom-panel input{writing-mode:vertical-lr;direction:rtl;height:150px;width:22px;accent-color:#20c5ec;cursor:pointer}
+.zoom-panel .zoom-label{font-size:10px;font-weight:700;color:#d5eff9}
+.name-switch{position:fixed;left:50%;bottom:69px;transform:translateX(-50%);z-index:1001;width:45px;height:45px;border-radius:50%;border:1px solid #7ca0b7;background:#23354b;color:#e9f8fe;font-weight:900;font-size:21px;box-shadow:0 5px 20px #0005;cursor:pointer}
+.name-switch.active{background:#08a6cf;border-color:#93edff;color:white}
+.source-help{position:fixed;right:12px;bottom:33px;z-index:1001;width:20px;height:20px;border-radius:50%;border:1px solid #a8bdcb;background:#26394e;color:white;font-size:12px;cursor:pointer}
+.source-panel{position:fixed;right:12px;bottom:63px;z-index:1100;max-width:min(330px,calc(100vw - 24px));background:#22364c;color:#e7f2f8;padding:14px;border:1px solid #698298;border-radius:12px;box-shadow:0 8px 35px #0007;font:12px/1.6 system-ui,sans-serif}
+.source-panel a{color:#70dbfa}
+.source-panel[hidden]{display:none}
+.leaflet-control-attribution{font-size:9px!important;opacity:.75;padding:2px 5px!important;max-width:calc(100vw - 80px);white-space:normal!important}
+@media(max-width:580px){.zoom-panel{left:7px;padding:8px 5px}.zoom-panel input{height:105px}.name-switch{bottom:77px}.source-help{right:6px;bottom:34px}}
+
 </style>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#e8f2fb;background:#121a24;font-synthesis:none}*{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}#map{position:fixed;inset:0;background:#c4c5c4}.leaflet-container{font-family:inherit}.leaflet-control-attribution{background:rgba(21,31,45,.76)!important;color:#b8d0e1!important;font-size:10px!important;padding:4px 7px!important}.leaflet-control-attribution a{color:#51c8f3!important}.leaflet-control-zoom{border:0!important;box-shadow:0 3px 15px #0003!important}.leaflet-control-zoom a{background:#233245!important;color:#dceef8!important;border-bottom-color:#4c6172!important}.leaflet-top.leaflet-left{top:132px;left:9px}
@@ -51,17 +66,36 @@
 
 <div class="bottom"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 19 6-14 4 9 3-6 5 11H3Z"/></svg><span>LIDAR</span><input id="opacity" type="range" min="0" max="100" value="100" aria-label="Opacité LiDAR"><output class="number" id="opacity-value">100</output></div>
 
+<aside class="zoom-panel" aria-label="Réglage du zoom"><button id="zoom-plus" type="button" aria-label="Zoom avant">+</button><input id="zoom-slider" type="range" min="3" max="18" step="1" value="13" aria-label="Niveau de zoom"><span id="zoom-level" class="zoom-label">13</span><button id="zoom-minus" type="button" aria-label="Zoom arrière">−</button></aside>
+<button class="name-switch" id="names" type="button" aria-label="Afficher les noms de lieux" aria-pressed="false" title="Noms de lieux">N</button>
+<button class="source-help" id="sources" type="button" aria-label="Sources et attributions" aria-expanded="false" aria-controls="source-panel">?</button>
+<div class="source-panel" id="source-panel" hidden><strong>Sources cartographiques</strong><div>Relief LiDAR HD : © IGN — Géoplateforme.</div><div>Satellite : © Esri, Maxar, Earthstar Geographics.</div><div>Noms : © OpenStreetMap contributors, © CARTO.</div><div>Carte interactive : Leaflet.</div><p>La netteté dépend de la résolution native des données. Certaines zones ne disposent pas encore de LiDAR HD.</p><a href="https://cartes.gouv.fr/" target="_blank" rel="noopener noreferrer">Géoplateforme IGN</a></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);let toastTimer,searchTimer,searchAbort,markMode=false,locationMarker=null;
-const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:19,preferCanvas:true});
+const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:18,preferCanvas:true});
 // Carte LiDAR HD : grille WMTS officielle PM_0_18. Une seule couche raster LiDAR.
-const tileOptions={maxNativeZoom:18,maxZoom:20,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:2,detectRetina:false};
+const tileOptions={maxNativeZoom:18,maxZoom:18,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:2,detectRetina:false};
 const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...tileOptions,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'}).addTo(map);
 const lidar=L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_18&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{...tileOptions,opacity:1,attribution:'© IGN — LiDAR HD'}).addTo(map);
+// Calque transparent de toponymes superposé aux reliefs (désactivé au démarrage).
+map.createPane('toponymes');
+map.getPane('toponymes').style.zIndex='650';
+map.getPane('toponymes').style.pointerEvents='none';
+const namesLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',{
+ subdomains:'abcd',maxNativeZoom:18,maxZoom:18,opacity:0.96,pane:'toponymes',
+ updateWhenIdle:true,keepBuffer:2,attribution:'© OpenStreetMap contributors © CARTO'
+});
+$('names').addEventListener('click',()=>{const visible=map.hasLayer(namesLayer);if(visible)map.removeLayer(namesLayer);else namesLayer.addTo(map);$('names').classList.toggle('active',!visible);$('names').setAttribute('aria-pressed',String(!visible));});
+const slider=$('zoom-slider');function syncZoom(){const z=Math.round(map.getZoom());slider.value=z;$('zoom-level').textContent=String(z);}
+slider.addEventListener('input',()=>map.setZoom(Number(slider.value)));
+$('zoom-plus').addEventListener('click',()=>map.zoomIn());$('zoom-minus').addEventListener('click',()=>map.zoomOut());
+map.on('zoomend',syncZoom);syncZoom();
+$('sources').addEventListener('click',()=>{const p=$('source-panel');p.hidden=!p.hidden;$('sources').setAttribute('aria-expanded',String(!p.hidden));});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('source-panel').hidden=true;$('sources').setAttribute('aria-expanded','false');}});
 let failed=0;lidar.on('tileerror',()=>{if(++failed===8)notify('Certaines zones ne sont pas encore couvertes par le LiDAR HD.');});
 function notify(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500)}
 $('opacity').addEventListener('input',e=>{const v=+e.target.value;lidar.setOpacity(v/100);$('opacity-value').textContent=v});
