@@ -8,6 +8,34 @@
 <title>LiDAR France — Explorer les reliefs</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxB5zOCaGadGRv4llTRyCF9FFSQ=" crossorigin="">
+<style id="leaflet-map-fallback">
+.leaflet-container{overflow:hidden;position:relative;outline:0;touch-action:pan-x pan-y;background:#c5c5c5}
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-tile{visibility:hidden;user-select:none;-webkit-user-drag:none}
+.leaflet-tile-loaded{visibility:inherit}
+.leaflet-tile-container{pointer-events:none}
+.leaflet-pane{z-index:400}
+.leaflet-tile-pane{z-index:200}
+.leaflet-overlay-pane{z-index:400}
+.leaflet-shadow-pane{z-index:500}
+.leaflet-marker-pane{z-index:600}
+.leaflet-tooltip-pane{z-index:650}
+.leaflet-popup-pane{z-index:700}
+.leaflet-map-pane canvas{z-index:100}
+.leaflet-map-pane svg{z-index:200}
+.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-right{right:0}
+.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}
+.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}
+.leaflet-control-attribution{background:#fff9;padding:0 5px;white-space:nowrap}
+.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}
+.leaflet-popup-content-wrapper{border-radius:12px;padding:2px 8px}
+.leaflet-popup-content{margin:13px 11px}
+.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-left:-20px;overflow:hidden}
+.leaflet-popup-tip{width:17px;height:17px;transform:rotate(45deg);margin:-10px auto 0}
+.leaflet-popup-close-button{position:absolute;right:8px;top:4px;z-index:1}
+</style>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#e8f2fb;background:#121a24;font-synthesis:none}*{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}#map{position:fixed;inset:0;background:#c4c5c4}.leaflet-container{font-family:inherit}.leaflet-control-attribution{background:rgba(21,31,45,.76)!important;color:#b8d0e1!important;font-size:10px!important;padding:4px 7px!important}.leaflet-control-attribution a{color:#51c8f3!important}.leaflet-control-zoom{border:0!important;box-shadow:0 3px 15px #0003!important}.leaflet-control-zoom a{background:#233245!important;color:#dceef8!important;border-bottom-color:#4c6172!important}.leaflet-top.leaflet-left{top:132px;left:9px}
 .hud{position:fixed;z-index:1000;top:42px;left:12px;width:min(360px,calc(100vw - 24px));pointer-events:none}.hud>*{pointer-events:auto}.search-shell{display:flex;align-items:center;height:40px;border-radius:26px;background:rgba(35,49,68,.86);box-shadow:0 4px 18px #0004;border:1px solid #c2d3e01c;backdrop-filter:blur(14px)}.search-icon{color:#26b8e4;margin-left:15px;flex:none}.search-shell input{color:#eef7fd;width:100%;min-width:0;border:0;outline:0;background:none;font:14px inherit;padding:0 12px}.search-shell input::placeholder{color:#9caebe}.clear{border:none;background:transparent;color:#b2c7d6;font-size:23px;cursor:pointer;margin-right:9px}.actions{display:flex;gap:6px;margin-top:8px}.chip{border:1px solid #8ca4bb25;color:#dce8f2;background:rgba(36,51,70,.85);padding:6px 10px;border-radius:19px;font:600 10px inherit;cursor:pointer;display:flex;align-items:center;gap:5px;backdrop-filter:blur(12px);box-shadow:0 2px 10px #0002}.chip svg{color:#22bde7}.chip.active{background:#0b829f;color:white}.results{margin-top:7px;background:#26374beF;box-shadow:0 9px 25px #0005;overflow:hidden;border-radius:14px;max-height:310px;overflow-y:auto}.result{display:block;text-align:left;width:100%;padding:11px 15px;border:0;border-bottom:1px solid #ffffff17;background:transparent;color:#fff;font:12px inherit;cursor:pointer}.result:hover,.result:focus-visible{background:#40556c}.hint{padding:12px;color:#cbdce7;font-size:12px}.bottom{position:fixed;z-index:1000;left:50%;transform:translateX(-50%);bottom:21px;display:flex;align-items:center;gap:13px;height:39px;min-width:320px;max-width:calc(100vw - 30px);padding:0 16px;border-radius:25px;background:rgba(36,50,68,.9);color:#bed1df;box-shadow:0 5px 22px #0005;border:1px solid #a7b4c127;backdrop-filter:blur(16px);font-size:11px;font-weight:800;letter-spacing:.6px}.bottom svg{color:#1bc4e8;flex:none}.bottom input{flex:1;min-width:110px;accent-color:#00bae9;cursor:pointer}.number{width:30px;color:#40cff5;text-align:right}.toast{position:fixed;z-index:1100;left:50%;top:20px;transform:translateX(-50%);background:#22374c;color:#fff;font-size:13px;padding:10px 16px;border-radius:10px;box-shadow:0 5px 25px #0005;opacity:0;pointer-events:none;transition:opacity .2s}.toast.show{opacity:1}.dot{height:18px;width:18px;background:#1fc5ef;border:3px solid white;border-radius:50%;box-shadow:0 0 0 3px #20bee95e}.mark-pin{width:23px;height:23px;border-radius:50% 50% 50% 0;background:#28bde7;transform:rotate(-45deg);box-shadow:0 2px 6px #0006;border:2px solid white}.mark-pin:after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;top:6px;left:6px}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#233449;color:white}.leaflet-popup-content button{background:#0aadd3;color:white;border:0;border-radius:6px;padding:7px 9px;margin-top:9px;cursor:pointer}.credit{position:fixed;right:12px;bottom:60px;z-index:999;font-size:10px;color:#f3f7fb;background:#172536a3;border-radius:6px;padding:5px 8px;pointer-events:none}.credit a{color:#8deaff}.help{position:fixed;right:12px;top:42px;z-index:1000;border:1px solid #8ca4bb36;background:#24344edc;color:white;cursor:pointer;border-radius:50%;height:33px;width:33px;font-size:16px}.help-dialog{position:fixed;z-index:1200;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:15px}.help-dialog.open{display:flex}.help-inner{max-width:450px;background:#25384b;color:#f0f6fa;padding:23px;border-radius:18px;line-height:1.6;font-size:14px}.help-inner h2{margin:0 0 8px}.help-inner button{background:#07a4cb;color:white;border:0;border-radius:8px;padding:9px 14px;cursor:pointer}@media(max-width:520px){.hud{top:16px;left:10px;width:calc(100vw - 65px)}.help{top:18px;right:10px}.bottom{bottom:25px;min-width:0;width:calc(100vw - 38px)}.leaflet-top.leaflet-left{top:116px;left:0}.credit{bottom:72px;right:7px;font-size:9px}}
