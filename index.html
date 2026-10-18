@@ -30,15 +30,13 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);let toastTimer,searchTimer,searchAbort,markMode=false,locationMarker=null;
 const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:19,preferCanvas:true});
-// Relief de secours pour les secteurs sans dalles LiDAR HD
-const ign='https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&LAYER=';
-const opt={maxNativeZoom:18,maxZoom:19,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:3};
-const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...opt,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'}).addTo(map);
-const relief=L.tileLayer(ign+'IGNF_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW',{...opt,attribution:'© IGN — relief'}).addTo(map);
-const lidar=L.tileLayer(ign+'IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW',{...opt,opacity:1,attribution:'© IGN — LiDAR HD'}).addTo(map);
-let failed=0;lidar.on('tileerror',()=>{if(++failed===12)notify('Zone sans couverture LiDAR HD : relief IGN de secours.');});
+// Carte LiDAR HD : grille WMTS officielle PM_0_18. Une seule couche raster LiDAR.
+const tileOptions={maxNativeZoom:18,maxZoom:20,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:2,detectRetina:false};
+const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...tileOptions,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'}).addTo(map);
+const lidar=L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_18&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{...tileOptions,opacity:1,attribution:'© IGN — LiDAR HD'}).addTo(map);
+let failed=0;lidar.on('tileerror',()=>{if(++failed===8)notify('Certaines zones ne sont pas encore couvertes par le LiDAR HD.');});
 function notify(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500)}
-$('opacity').addEventListener('input',e=>{const v=+e.target.value;lidar.setOpacity(v/100);relief.setOpacity(v/100);$('opacity-value').textContent=v});
+$('opacity').addEventListener('input',e=>{const v=+e.target.value;lidar.setOpacity(v/100);$('opacity-value').textContent=v});
 const markIcon=L.divIcon({className:'',html:'<div class="mark-pin"></div>',iconSize:[23,23],iconAnchor:[12,23]});
 function loadMarkers(){try{const data=JSON.parse(localStorage.getItem('lidar-france-markers')||'[]');return Array.isArray(data)?data.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)).slice(0,500):[]}catch{return []}}
 let saved=loadMarkers();function persist(){try{localStorage.setItem('lidar-france-markers',JSON.stringify(saved))}catch{notify('Stockage local indisponible.')}}
