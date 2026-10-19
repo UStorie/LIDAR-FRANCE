@@ -97,7 +97,7 @@ async function initLabels(){
   for(const source of Object.values(style.sources||{})){if(source.url)source.url=resolve(source.url);if(source.tiles)source.tiles=source.tiles.map(resolve);}
   style.layers=style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-field']);
   const host=document.createElement('div');host.id='labels-overlay';
-  Object.assign(host.style,{position:'absolute',inset:'0',zIndex:'350',pointerEvents:'none',opacity:'0.96'});
+  Object.assign(host.style,{position:'absolute',inset:'0',zIndex:'850',pointerEvents:'none',opacity:'0.96'});
   $('map').append(host);
   const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';document.head.append(css);
   await new Promise((ok,fail)=>{if(window.maplibregl)return ok();const js=document.createElement('script');js.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';js.onload=ok;js.onerror=fail;document.head.append(js);});
