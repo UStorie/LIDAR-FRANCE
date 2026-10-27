@@ -81,13 +81,22 @@
 const $=id=>document.getElementById(id);let toastTimer,searchTimer,searchAbort,markMode=false,locationMarker=null;
 const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:18,preferCanvas:true});
 // Carte LiDAR HD : grille WMTS officielle PM_0_18. Une seule couche raster LiDAR.
-const tileOptions={maxNativeZoom:18,maxZoom:18,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:2,detectRetina:false};
+const tileOptions={maxNativeZoom:18,maxZoom:18,updateWhenIdle:false,updateWhenZooming:false,keepBuffer:4,detectRetina:false};
 const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...tileOptions,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'}).addTo(map);
 const lidar=L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_18&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{...tileOptions,opacity:1,attribution:'© IGN — LiDAR HD'}).addTo(map);
 // Calque transparent de toponymes superposé aux reliefs (désactivé au démarrage).
 // Noms vectoriels OpenFreeMap : aucun compte ni clé API.
 let labelsMap=null,labelsOn=false,labelsLoading=null;
-function syncLabels(){if(!labelsMap||!labelsOn)return;const c=map.getCenter();labelsMap.jumpTo({center:[c.lng,c.lat],zoom:map.getZoom(),bearing:0,pitch:0});}
+let labelsFrame=0;
+function syncLabels(){
+ if(!labelsMap||!labelsOn||labelsFrame)return;
+ labelsFrame=requestAnimationFrame(()=>{
+  labelsFrame=0;
+  if(!labelsMap||!labelsOn)return;
+  const c=map.getCenter();
+  labelsMap.jumpTo({center:[c.lng,c.lat],zoom:map.getZoom(),bearing:0,pitch:0});
+ });
+}
 async function initLabels(){
  if(labelsMap)return;
  if(labelsLoading)return labelsLoading;
@@ -116,7 +125,8 @@ $('names').addEventListener('click',async()=>{
  if(labelsOn){b.disabled=true;try{await initLabels();$('labels-overlay').style.display='block';labelsMap.resize();syncLabels();}catch(e){console.warn(e);labelsOn=false;b.classList.remove('active');b.setAttribute('aria-pressed','false');notify('Noms momentanément indisponibles.');}}else if($('labels-overlay'))$('labels-overlay').style.display='none';
  b.disabled=false;
 });
-map.on('moveend zoomend resize',syncLabels);
+// Synchronisation pendant le glissement tactile, pas uniquement après le relâchement.
+map.on('move zoom resize moveend zoomend',syncLabels);
 const slider=$('zoom-slider');function syncZoom(){const z=Math.round(map.getZoom());slider.value=z;$('zoom-level').textContent=String(z);}
 slider.addEventListener('input',()=>map.setZoom(Number(slider.value)));
 $('zoom-plus').addEventListener('click',()=>map.zoomIn());$('zoom-minus').addEventListener('click',()=>map.zoomOut());
