@@ -69,7 +69,7 @@
 
 <div class="bottom"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 19 6-14 4 9 3-6 5 11H3Z"/></svg><span>LIDAR</span><input id="opacity" type="range" min="0" max="100" value="100" aria-label="Opacité LiDAR"><output class="number" id="opacity-value">100</output></div>
 
-<aside class="zoom-panel" aria-label="Réglage du zoom"><button id="zoom-plus" type="button" aria-label="Zoom avant">+</button><input id="zoom-slider" type="range" min="3" max="18" step="1" value="13" aria-label="Niveau de zoom"><span id="zoom-level" class="zoom-label">13</span><button id="zoom-minus" type="button" aria-label="Zoom arrière">−</button></aside>
+<aside class="zoom-panel" aria-label="Réglage du zoom"><button id="zoom-plus" type="button" aria-label="Zoom avant">+</button><input id="zoom-slider" type="range" min="3" max="20" step="1" value="13" aria-label="Niveau de zoom"><span id="zoom-level" class="zoom-label">13</span><button id="zoom-minus" type="button" aria-label="Zoom arrière">−</button></aside>
 <button class="name-switch" id="names" type="button" aria-label="Afficher les noms de lieux" aria-pressed="false" title="Noms de lieux">N</button>
 <button class="source-help" id="sources" type="button" aria-label="Sources et attributions" aria-expanded="false" aria-controls="source-panel">?</button>
 <div class="source-panel" id="source-panel" hidden><strong>Sources cartographiques</strong><div>Relief LiDAR HD : © IGN — Géoplateforme.</div><div>Satellite : © Esri, Maxar, Earthstar Geographics.</div><div>Noms : © OpenStreetMap contributors — OpenFreeMap.</div><div>Carte interactive : Leaflet.</div><p>La netteté dépend de la résolution native des données. Certaines zones ne disposent pas encore de LiDAR HD.</p><a href="https://cartes.gouv.fr/" target="_blank" rel="noopener noreferrer">Géoplateforme IGN</a><div class="visit-counter" aria-label="Nombre de visites"><span>👁 Visites</span> <img src="https://hits.sh/UStorie.github.io/LIDAR-FRANCE.svg?label=Visites&color=08a6cf&labelColor=23354b&style=flat" alt="Compteur de visites LIDAR-FRANCE" width="120" height="20" referrerpolicy="no-referrer"></div></div>
@@ -79,23 +79,25 @@
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);let toastTimer,searchTimer,searchAbort,markMode=false,locationMarker=null;
-const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:18,preferCanvas:true});
+const map=L.map('map',{center:[49.16,5.39],zoom:13,zoomControl:false,maxZoom:20,preferCanvas:true});
 // Carte LiDAR HD : grille WMTS officielle PM_0_18. Une seule couche raster LiDAR.
-const tileOptions={maxNativeZoom:18,maxZoom:18,updateWhenIdle:false,updateWhenZooming:false,keepBuffer:4,detectRetina:false};
+const tileOptions={maxNativeZoom:18,maxZoom:20,updateWhenIdle:false,updateWhenZooming:false,keepBuffer:4,detectRetina:false};
 const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...tileOptions,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'}).addTo(map);
 const lidar=L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_18&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{...tileOptions,opacity:1,attribution:'© IGN — LiDAR HD'}).addTo(map);
 // Calque transparent de toponymes superposé aux reliefs (désactivé au démarrage).
 // Noms vectoriels OpenFreeMap : aucun compte ni clé API.
 let labelsMap=null,labelsOn=false,labelsLoading=null;
-let labelsFrame=0;
-function syncLabels(){
- if(!labelsMap||!labelsOn||labelsFrame)return;
- labelsFrame=requestAnimationFrame(()=>{
-  labelsFrame=0;
-  if(!labelsMap||!labelsOn)return;
-  const c=map.getCenter();
-  labelsMap.jumpTo({center:[c.lng,c.lat],zoom:map.getZoom(),bearing:0,pitch:0});
- });
+// 5 mm approx. de marge pendant le glissement, puis recalage sur le terrain.
+const LABEL_DRIFT_PX=19;
+let labelsSyncedCenter=null,labelsSyncedZoom=null;
+function syncLabels(force=false){
+ if(!labelsMap||!labelsOn)return;
+ const center=map.getCenter(),zoom=map.getZoom();
+ const offset=labelsSyncedCenter?map.latLngToContainerPoint(labelsSyncedCenter).distanceTo(map.getSize().divideBy(2)):Infinity;
+ if(!force&&Math.abs(zoom-labelsSyncedZoom)<0.001&&offset<LABEL_DRIFT_PX)return;
+ labelsMap.jumpTo({center:[center.lng,center.lat],zoom,bearing:0,pitch:0});
+ labelsSyncedCenter=center;
+ labelsSyncedZoom=zoom;
 }
 async function initLabels(){
  if(labelsMap)return;
@@ -114,7 +116,7 @@ async function initLabels(){
   const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';document.head.append(css);
   await new Promise((ok,fail)=>{if(window.maplibregl)return ok();const js=document.createElement('script');js.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';js.onload=ok;js.onerror=fail;document.head.append(js);});
   const c=map.getCenter();
-  labelsMap=new maplibregl.Map({container:host,style,center:[c.lng,c.lat],zoom:map.getZoom(),interactive:false,attributionControl:false,fadeDuration:0,renderWorldCopies:false});
+  labelsMap=new maplibregl.Map({container:host,style,center:[c.lng,c.lat],zoom:map.getZoom(),maxZoom:22,interactive:false,attributionControl:false,fadeDuration:0,renderWorldCopies:false});
   labelsMap.on('error',e=>{if(e.error)console.warn('Noms OpenFreeMap',e.error);});
   if(!labelsOn)host.style.display='none';
  })();
@@ -126,7 +128,8 @@ $('names').addEventListener('click',async()=>{
  b.disabled=false;
 });
 // Synchronisation pendant le glissement tactile, pas uniquement après le relâchement.
-map.on('move zoom resize moveend zoomend',syncLabels);
+map.on('move zoom',()=>syncLabels(false));
+map.on('moveend zoomend resize',()=>syncLabels(true));
 const slider=$('zoom-slider');function syncZoom(){const z=Math.round(map.getZoom());slider.value=z;$('zoom-level').textContent=String(z);}
 slider.addEventListener('input',()=>map.setZoom(Number(slider.value)));
 $('zoom-plus').addEventListener('click',()=>map.zoomIn());$('zoom-minus').addEventListener('click',()=>map.zoomOut());
